@@ -303,20 +303,20 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }).addTo(map);
 
 // ── Locate control (live GPS position) ─────────────────────────────────────
-L.control.locate({
-  position: 'topright',
-  flyTo: false,
-  keepCurrentZoomLevel: true,
-  drawCircle: true,
-  drawMarker: true,
-  markerStyle: {
-    weight: 2,
-    opacity: 0.9,
-    fillOpacity: 0.8,
-  },
-  strings: { title: 'Show my location' },
-  locateOptions: { enableHighAccuracy: true, watch: true },
-}).addTo(map);
+if (typeof L.control.locate === 'function') {
+  L.control.locate({
+    position: 'topright',
+    flyTo: false,
+    keepCurrentZoomLevel: true,
+    drawCircle: true,
+    drawMarker: true,
+    markerStyle: { weight: 2, opacity: 0.9, fillOpacity: 0.8 },
+    strings: { title: 'Show my location' },
+    locateOptions: { enableHighAccuracy: true, watch: true },
+  }).addTo(map);
+} else {
+  console.warn('Leaflet.Locate plugin not loaded — live position unavailable');
+}
 
 // ── Custom marker icon factory ──────────────────────────────────────────────
 function makeIcon(number) {
