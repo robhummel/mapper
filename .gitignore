@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+~/.mapper-token.json
+test-photos/
+*.DS_Store

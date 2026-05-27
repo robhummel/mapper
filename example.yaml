@@ -1,0 +1,19 @@
+# Trail Hazard Report Configuration
+# All fields are optional — the script fills in defaults from EXIF data and CLI args.
+
+name: "Central Trail Hazard Report"
+location: "Hopkinton, MA"
+description: "Trail hazard inspection — Spring 2026. Conditions observed on May 26, 2026."
+
+# Per-photo overrides (keyed by filename, case-insensitive)
+# Notes here supplement or override the UserComment/ImageDescription EXIF fields.
+photos:
+  "IMG_001.jpg":
+    notes: "Poison ivy patch on right side of trail, about knee height."
+  "IMG_002.jpg":
+    notes: "Large fallen oak tree fully blocking the path. Requires chainsaw."
+  "IMG_003.jpg":
+    notes: "Eroded section — significant drop to stream bank, safety hazard."
+    # Manually specify coordinates if this photo lacks GPS EXIF:
+    # lat: 42.2345
+    # lon: -71.5123

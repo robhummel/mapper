@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>Central Trail Hazard Report</title>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <!-- Leaflet Locate Control CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.locatecontrol@0.79.0/dist/L.Control.Locate.min.css"/>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ────────────────────────────────────── */
+    #header {
+      background: #16213e;
+      border-bottom: 2px solid #e63946;
+      padding: 10px 14px;
+      flex-shrink: 0;
+      cursor: pointer;
+      user-select: none;
+    }
+    #header h1 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    #header h1 .hazard-icon { font-size: 1.1rem; }
+    #header .meta {
+      font-size: 0.75rem;
+      color: #aaa;
+      margin-top: 3px;
+    }
+    #header-detail {
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height 0.25s ease;
+    }
+    #header-detail.open { max-height: 120px; }
+    #header-detail p {
+      font-size: 0.8rem;
+      color: #ccc;
+      margin-top: 6px;
+      line-height: 1.4;
+    }
+    #header .chevron {
+      margin-left: auto;
+      font-size: 0.8rem;
+      color: #aaa;
+      transition: transform 0.2s;
+    }
+    #header.open .chevron { transform: rotate(180deg); }
+
+    /* ── Map ────────────────────────────────────────── */
+    #map {
+      flex: 1;
+      width: 100%;
+    }
+
+    /* ── Hazard marker SVG ─────────────────────────── */
+    .hazard-marker {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      background: #e63946;
+      border: 2.5px solid #fff;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    }
+    .hazard-marker span {
+      transform: rotate(45deg);
+      font-size: 0.7rem;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1;
+    }
+
+    /* ── Popup ─────────────────────────────────────── */
+    .leaflet-popup-content-wrapper {
+      background: #16213e;
+      color: #eee;
+      border: 1px solid #e63946;
+      border-radius: 10px;
+      padding: 0;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+    }
+    .leaflet-popup-content {
+      margin: 0;
+      width: 260px !important;
+    }
+    .leaflet-popup-tip { background: #16213e; }
+    .leaflet-popup-close-button { color: #aaa !important; font-size: 18px !important; top: 8px !important; right: 10px !important; }
+
+    .popup-inner { padding: 14px; }
+    .popup-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #e63946;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .popup-meta {
+      font-size: 0.72rem;
+      color: #aaa;
+      margin-bottom: 8px;
+      line-height: 1.5;
+    }
+    .popup-notes {
+      font-size: 0.82rem;
+      color: #ddd;
+      margin-bottom: 10px;
+      line-height: 1.4;
+      font-style: italic;
+    }
+    .popup-thumb-wrap {
+      position: relative;
+      border-radius: 6px;
+      overflow: hidden;
+      cursor: pointer;
+      background: #0f0f1a;
+    }
+    .popup-thumb-wrap img {
+      width: 100%;
+      display: block;
+      border-radius: 6px;
+      transition: opacity 0.15s;
+    }
+    .popup-thumb-wrap:hover img { opacity: 0.85; }
+    .popup-thumb-overlay {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      background: linear-gradient(transparent, rgba(0,0,0,0.7));
+      color: #fff;
+      font-size: 0.7rem;
+      padding: 8px 10px 6px;
+      text-align: center;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    .popup-thumb-wrap:hover .popup-thumb-overlay { opacity: 1; }
+
+    .popup-full-link {
+      display: block;
+      margin-top: 8px;
+      text-align: center;
+      font-size: 0.75rem;
+      color: #4cc9f0;
+      text-decoration: none;
+    }
+    .popup-full-link:hover { text-decoration: underline; }
+
+    /* ── Lightbox ──────────────────────────────────── */
+    #lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.92);
+      z-index: 10000;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    #lightbox.active { display: flex; }
+    #lightbox img {
+      max-width: 100%;
+      max-height: 80dvh;
+      border-radius: 8px;
+      box-shadow: 0 4px 40px rgba(0,0,0,0.8);
+      object-fit: contain;
+    }
+    #lightbox-caption {
+      color: #ccc;
+      font-size: 0.8rem;
+      margin-top: 12px;
+      text-align: center;
+      max-width: 400px;
+      line-height: 1.4;
+    }
+    #lightbox-close {
+      position: absolute;
+      top: 16px; right: 20px;
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 2rem;
+      cursor: pointer;
+      line-height: 1;
+      padding: 4px;
+    }
+    #lightbox-close:hover { color: #e63946; }
+
+    /* ── Nav arrows (lightbox) ─────────────────────── */
+    .lb-nav {
+      position: absolute;
+      top: 50%; transform: translateY(-50%);
+      background: rgba(255,255,255,0.1);
+      border: none;
+      color: #fff;
+      font-size: 2rem;
+      cursor: pointer;
+      padding: 8px 14px;
+      border-radius: 6px;
+      line-height: 1;
+    }
+    .lb-nav:hover { background: rgba(230,57,70,0.5); }
+    #lb-prev { left: 10px; }
+    #lb-next { right: 10px; }
+
+    /* ── Route info badge ──────────────────────────── */
+    .route-badge {
+      position: absolute;
+      bottom: 14px; left: 50%;
+      transform: translateX(-50%);
+      background: rgba(22,33,62,0.9);
+      color: #ccc;
+      font-size: 0.7rem;
+      padding: 5px 12px;
+      border-radius: 20px;
+      border: 1px solid #333;
+      z-index: 500;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<div id="header" onclick="toggleHeader(this)">
+  <h1>
+    <span class="hazard-icon">⚠️</span>
+    Central Trail Hazard Report
+    <span class="chevron">▾</span>
+  </h1>
+  <div class="meta">Hopkinton, MA · 26 May 2026 · 4 hazards
+  </div>
+  <div id="header-detail">
+    <p>Trail hazard inspection — May 26, 2026. Conditions observed on the Central Trail.</p>
+  </div>
+</div>
+
+<!-- Map -->
+<div id="map"></div>
+
+<!-- Route badge -->
+<div class="route-badge">Tap a marker to see hazard details · 📍 for your location</div>
+
+<!-- Lightbox -->
+<div id="lightbox">
+  <button id="lightbox-close" onclick="closeLightbox()" aria-label="Close">×</button>
+  <button class="lb-nav" id="lb-prev" onclick="lbNav(-1)" aria-label="Previous">‹</button>
+  <img id="lb-img" src="" alt="Full size hazard photo"/>
+  <div id="lightbox-caption"></div>
+  <button class="lb-nav" id="lb-next" onclick="lbNav(1)" aria-label="Next">›</button>
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV/XN/WLEo=" crossorigin=""></script>
+<!-- Leaflet Locate Control -->
+<script src="https://cdn.jsdelivr.net/npm/leaflet.locatecontrol@0.79.0/dist/L.Control.Locate.min.js"></script>
+
+<script>
+// ── Photo data (generated by mapper.py) ────────────────────────────────────
+const PHOTOS = [{"number": 1, "filename": "IMG_001.jpg", "lat": 42.2115, "lon": -71.524, "timestamp_display": "26 May 2026 at 10:12 AM", "notes": "Poison ivy patch on right side of trail", "camera": "Apple iPhone 15 Pro", "thumbnail_b64": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAkGBwgHBgkIBwgKCgkLDRYPDQwMDRsUFRAWIB0iIiAdHx8kKDQsJCYxJx8fLT0tMTU3Ojo6Iys/RD84QzQ5Ojf/2wBDAQoKCg0MDRoPDxo3JR8lNzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzf/wAARCAEsAZADASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAX/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFgEBAQEAAAAAAAAAAAAAAAAAAAUG/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8AhgIbOAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP/Z", "share_url": null}, {"number": 2, "filename": "IMG_002.jpg", "lat": 42.212699972222225, "lon": -71.5228, "timestamp_display": "26 May 2026 at 10:24 AM", "notes": "Large fallen oak tree blocking path", "camera": "Apple iPhone 15 Pro", "thumbnail_b64": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAkGBwgHBgkIBwgKCgkLDRYPDQwMDRsUFRAWIB0iIiAdHx8kKDQsJCYxJx8fLT0tMTU3Ojo6Iys/RD84QzQ5Ojf/2wBDAQoKCg0MDRoPDxo3JR8lNzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzf/wAARCAEsAZADASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAX/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCKAiqwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/9k=", "share_url": null}, {"number": 3, "filename": "IMG_003.jpg", "lat": 42.2141, "lon": -71.5215, "timestamp_display": "26 May 2026 at 10:38 AM", "notes": "Eroded bank near stream, steep drop", "camera": "Apple iPhone 15 Pro", "thumbnail_b64": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAkGBwgHBgkIBwgKCgkLDRYPDQwMDRsUFRAWIB0iIiAdHx8kKDQsJCYxJx8fLT0tMTU3Ojo6Iys/RD84QzQ5Ojf/2wBDAQoKCg0MDRoPDxo3JR8lNzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzf/wAARCAEsAZADASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAT/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCYBcRAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH/9k=", "share_url": null}, {"number": 4, "filename": "IMG_004.jpg", "lat": 42.2158, "lon": -71.51989999999999, "timestamp_display": "26 May 2026 at 10:51 AM", "notes": "Wasps nest in tree stump", "camera": "Apple iPhone 15 Pro", "thumbnail_b64": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAkGBwgHBgkIBwgKCgkLDRYPDQwMDRsUFRAWIB0iIiAdHx8kKDQsJCYxJx8fLT0tMTU3Ojo6Iys/RD84QzQ5Ojf/2wBDAQoKCg0MDRoPDxo3JR8lNzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzf/wAARCAEsAZADASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAX/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAb/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCiAmVEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/9k=", "share_url": null}];
+const REPORT = {"name": "Central Trail Hazard Report", "location": "Hopkinton, MA", "description": "Trail hazard inspection \u2014 May 26, 2026. Conditions observed on the Central Trail.", "date": "26 May 2026", "photo_count": 4, "slug": "central-trail-hazard-report-2026-05-26", "generated_at": "2026-05-26T22:19:38.839225"};
+
+// ── Map init ───────────────────────────────────────────────────────────────
+const map = L.map('map', {
+  zoomControl: true,
+  attributionControl: true,
+});
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  maxZoom: 19,
+}).addTo(map);
+
+// ── Locate control (live GPS position) ─────────────────────────────────────
+L.control.locate({
+  position: 'topright',
+  flyTo: false,
+  keepCurrentZoomLevel: true,
+  drawCircle: true,
+  drawMarker: true,
+  markerStyle: {
+    weight: 2,
+    opacity: 0.9,
+    fillOpacity: 0.8,
+  },
+  strings: { title: 'Show my location' },
+  locateOptions: { enableHighAccuracy: true, watch: true },
+}).addTo(map);
+
+// ── Custom marker icon factory ──────────────────────────────────────────────
+function makeIcon(number) {
+  return L.divIcon({
+    className: '',
+    html: `<div class="hazard-marker"><span>${number}</span></div>`,
+    iconSize: [36, 36],
+    iconAnchor: [18, 36],
+    popupAnchor: [0, -38],
+  });
+}
+
+// ── Popup HTML builder ──────────────────────────────────────────────────────
+function makePopupHtml(photo) {
+  const thumbSection = photo.thumbnail_b64
+    ? `<div class="popup-thumb-wrap" onclick="openLightbox(${photo.number - 1})">
+         <img src="data:image/jpeg;base64,${photo.thumbnail_b64}" alt="Hazard photo ${photo.number}" loading="lazy"/>
+         <div class="popup-thumb-overlay">Tap to enlarge</div>
+       </div>`
+    : '';
+
+  const fullLink = photo.share_url
+    ? `<a class="popup-full-link" href="${photo.share_url}" target="_blank" rel="noopener">
+         📂 View full image in OneDrive →
+       </a>`
+    : '';
+
+  const notesSection = photo.notes
+    ? `<div class="popup-notes">"${photo.notes}"</div>`
+    : '';
+
+  const meta = [
+    photo.timestamp_display,
+    photo.camera,
+  ].filter(Boolean).join('<br/>');
+
+  return `<div class="popup-inner">
+    <div class="popup-title">⚠ Hazard #${photo.number}</div>
+    ${meta ? `<div class="popup-meta">${meta}</div>` : ''}
+    ${notesSection}
+    ${thumbSection}
+    ${fullLink}
+  </div>`;
+}
+
+// ── Place markers ───────────────────────────────────────────────────────────
+const markers = [];
+const bounds = [];
+
+PHOTOS.forEach((photo, idx) => {
+  const latlng = [photo.lat, photo.lon];
+  bounds.push(latlng);
+
+  const marker = L.marker(latlng, { icon: makeIcon(photo.number) })
+    .addTo(map)
+    .bindPopup(makePopupHtml(photo), {
+      maxWidth: 280,
+      minWidth: 260,
+      className: '',
+    });
+
+  markers.push(marker);
+});
+
+// Draw route polyline (thin dashed line connecting markers in order)
+if (bounds.length > 1) {
+  L.polyline(bounds, {
+    color: '#e63946',
+    weight: 2,
+    opacity: 0.5,
+    dashArray: '6, 8',
+  }).addTo(map);
+}
+
+// Fit map to all markers
+if (bounds.length > 0) {
+  map.fitBounds(bounds, { padding: [40, 40], maxZoom: 17 });
+}
+
+// ── Lightbox ────────────────────────────────────────────────────────────────
+let lbIndex = 0;
+
+function openLightbox(idx) {
+  lbIndex = idx;
+  renderLightbox();
+  document.getElementById('lightbox').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+function lbNav(delta) {
+  lbIndex = (lbIndex + delta + PHOTOS.length) % PHOTOS.length;
+  renderLightbox();
+}
+
+function renderLightbox() {
+  const photo = PHOTOS[lbIndex];
+  const img = document.getElementById('lb-img');
+  img.src = photo.thumbnail_b64
+    ? `data:image/jpeg;base64,${photo.thumbnail_b64}`
+    : '';
+
+  const parts = [`Hazard #${photo.number}`];
+  if (photo.timestamp_display) parts.push(photo.timestamp_display);
+  if (photo.notes) parts.push(`"${photo.notes}"`);
+
+  document.getElementById('lightbox-caption').innerHTML = parts.join('<br/>') +
+    (photo.share_url
+      ? `<br/><a href="${photo.share_url}" target="_blank" rel="noopener" style="color:#4cc9f0">📂 Full image in OneDrive</a>`
+      : '');
+
+  // Show/hide nav arrows
+  document.getElementById('lb-prev').style.display = PHOTOS.length > 1 ? '' : 'none';
+  document.getElementById('lb-next').style.display = PHOTOS.length > 1 ? '' : 'none';
+}
+
+// Close lightbox on backdrop tap (not on img)
+document.getElementById('lightbox').addEventListener('click', function(e) {
+  if (e.target === this) closeLightbox();
+});
+
+// Keyboard nav
+document.addEventListener('keydown', function(e) {
+  const lb = document.getElementById('lightbox');
+  if (!lb.classList.contains('active')) return;
+  if (e.key === 'Escape') closeLightbox();
+  if (e.key === 'ArrowLeft') lbNav(-1);
+  if (e.key === 'ArrowRight') lbNav(1);
+});
+
+// ── Header toggle ───────────────────────────────────────────────────────────
+function toggleHeader(el) {
+  el.classList.toggle('open');
+  document.getElementById('header-detail').classList.toggle('open');
+}
+</script>
+</body>
+</html>
