@@ -114,6 +114,8 @@ def main():
     # ── Google Drive upload + share links (optional) ──────────────────────────
     if gdrive_folder:
         credentials_file = os.environ.get('GOOGLE_CREDENTIALS_FILE')
+        if credentials_file:
+            credentials_file = str(Path(credentials_file).expanduser())
         if not credentials_file or not Path(credentials_file).exists():
             print(f"\n⚠  --gdrive-folder set but GOOGLE_CREDENTIALS_FILE not found in .env.")
             print(f"   See .env.example for setup instructions.")

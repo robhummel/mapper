@@ -98,7 +98,7 @@ def deploy(html_path: Path, report_name: str, dry_run: bool = False) -> Optional
     # Stage output/ directory
     repo.index.add([
         str(html_path.relative_to(REPO_ROOT)),
-        'output/index.html',
+        'docs/index.html',
     ])
 
     if not repo.index.diff('HEAD') and not repo.untracked_files:
