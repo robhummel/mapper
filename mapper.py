@@ -99,6 +99,7 @@ def main():
     location = args.location or config.get('location')
     description = args.description or config.get('description')
     gdrive_folder = args.gdrive_folder or config.get('gdrive_folder')
+    folder_url = None  # set by gdrive upload if enabled
 
     print(f"\n📸 Reading photos from: {photos_dir}")
     photos = read_photos_dir(photos_dir, yaml_photos)
@@ -125,13 +126,13 @@ def main():
         else:
             print(f"\n☁️  Uploading photos to Google Drive folder: '{gdrive_folder}'")
             from lib.gdrive import upload_and_share
-            photos = upload_and_share(photos, gdrive_folder, credentials_file)
+            photos, folder_url = upload_and_share(photos, gdrive_folder, credentials_file)
     else:
         for photo in photos:
             photo['share_url'] = None
 
     # ── Build report metadata ─────────────────────────────────────────────────
-    report = build_report_meta(photos, report_name, location, description)
+    report = build_report_meta(photos, report_name, location, description, folder_url=folder_url)
 
     # ── Render HTML ───────────────────────────────────────────────────────────
     print(f"\n🗺  Rendering map HTML...")

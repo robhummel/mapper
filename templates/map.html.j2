@@ -78,25 +78,45 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 36px;
-      height: 36px;
+      width: 26px;
+      height: 26px;
       background: #e63946;
-      border: 2.5px solid #fff;
+      border: 2px solid #fff;
       border-radius: 50% 50% 50% 0;
       transform: rotate(-45deg);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
     }
     .hazard-marker.interpolated {
-      background: #f4a261;      /* amber — estimated location */
+      background: #f4a261;
       border-style: dashed;
     }
     .hazard-marker span {
       transform: rotate(45deg);
-      font-size: 0.7rem;
+      font-size: 0.6rem;
       font-weight: 800;
       color: #fff;
       line-height: 1;
     }
+
+    /* ── Marker prev/next nav ─────────────────────── */
+    .marker-nav-btn {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 1000;
+      background: rgba(22,33,62,0.85);
+      border: 1px solid #444;
+      color: #fff;
+      font-size: 1.6rem;
+      line-height: 1;
+      padding: 10px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: none;
+    }
+    .marker-nav-btn:hover { background: rgba(230,57,70,0.7); }
+    #map-prev { left: 10px; }
+    #map-next { right: 10px; }
     .popup-estimated {
       font-size: 0.72rem;
       color: #f4a261;
@@ -271,14 +291,19 @@
   </div>
   <div id="header-detail">
     {% if report.description %}<p>{{ report.description }}</p>{% endif %}
+    {% if report.folder_url %}<p style="margin-top:6px"><a href="{{ report.folder_url }}" target="_blank" rel="noopener" style="color:#4cc9f0;font-size:0.78rem">📁 View all photos in Google Drive →</a></p>{% endif %}
   </div>
 </div>
 
 <!-- Map -->
-<div id="map"></div>
+<div id="map">
+  <!-- Marker prev/next nav (visible when a popup is open) -->
+  <button class="marker-nav-btn" id="map-prev" onclick="markerNav(-1)" aria-label="Previous hazard">‹</button>
+  <button class="marker-nav-btn" id="map-next" onclick="markerNav(1)"  aria-label="Next hazard">›</button>
+</div>
 
 <!-- Route badge -->
-<div class="route-badge">Tap a marker to see hazard details · 📍 for your location</div>
+<div class="route-badge">Tap marker · ← → to navigate · 📍 your location</div>
 
 <!-- Lightbox -->
 <div id="lightbox">
@@ -332,9 +357,9 @@ function makeIcon(number, interpolated) {
   return L.divIcon({
     className: '',
     html: `<div class="${cls}"><span>${number}</span></div>`,
-    iconSize: [36, 36],
-    iconAnchor: [18, 36],
-    popupAnchor: [0, -38],
+    iconSize: [26, 26],
+    iconAnchor: [13, 26],
+    popupAnchor: [0, -28],
   });
 }
 
@@ -363,7 +388,6 @@ function makePopupHtml(photo) {
 
   const meta = [
     photo.timestamp_display,
-    photo.camera,
   ].filter(Boolean).join('<br/>');
 
   return `<div class="popup-inner">
@@ -379,6 +403,25 @@ function makePopupHtml(photo) {
 // ── Place markers ───────────────────────────────────────────────────────────
 const markers = [];
 const bounds = [];
+let currentMarkerIdx = -1;
+
+function showMarkerNavBtns(visible) {
+  document.getElementById('map-prev').style.display = visible ? 'block' : 'none';
+  document.getElementById('map-next').style.display = visible ? 'block' : 'none';
+}
+
+function openMarkerByIdx(idx) {
+  if (idx < 0 || idx >= markers.length) return;
+  currentMarkerIdx = idx;
+  markers[idx].openPopup();
+  map.panTo(markers[idx].getLatLng(), { animate: true, duration: 0.4 });
+  showMarkerNavBtns(true);
+}
+
+function markerNav(delta) {
+  if (currentMarkerIdx < 0) return;
+  openMarkerByIdx((currentMarkerIdx + delta + markers.length) % markers.length);
+}
 
 PHOTOS.forEach((photo, idx) => {
   const latlng = [photo.lat, photo.lon];
@@ -386,11 +429,10 @@ PHOTOS.forEach((photo, idx) => {
 
   const marker = L.marker(latlng, { icon: makeIcon(photo.number, photo.interpolated) })
     .addTo(map)
-    .bindPopup(makePopupHtml(photo), {
-      maxWidth: 280,
-      minWidth: 260,
-      className: '',
-    });
+    .bindPopup(makePopupHtml(photo), { maxWidth: 280, minWidth: 260, className: '' });
+
+  marker.on('popupopen',  () => { currentMarkerIdx = idx; showMarkerNavBtns(true); });
+  marker.on('popupclose', () => { showMarkerNavBtns(false); });
 
   markers.push(marker);
 });
@@ -459,13 +501,17 @@ document.getElementById('lightbox').addEventListener('click', function(e) {
   if (e.target === this) closeLightbox();
 });
 
-// Keyboard nav
+// Keyboard nav — lightbox takes priority; otherwise navigate markers
 document.addEventListener('keydown', function(e) {
   const lb = document.getElementById('lightbox');
-  if (!lb.classList.contains('active')) return;
-  if (e.key === 'Escape') closeLightbox();
-  if (e.key === 'ArrowLeft') lbNav(-1);
-  if (e.key === 'ArrowRight') lbNav(1);
+  if (lb.classList.contains('active')) {
+    if (e.key === 'Escape')      closeLightbox();
+    if (e.key === 'ArrowLeft')   lbNav(-1);
+    if (e.key === 'ArrowRight')  lbNav(1);
+  } else {
+    if (e.key === 'ArrowLeft')   markerNav(-1);
+    if (e.key === 'ArrowRight')  markerNav(1);
+  }
 });
 
 // ── Header toggle ───────────────────────────────────────────────────────────

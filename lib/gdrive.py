@@ -130,7 +130,7 @@ def upload_and_share(
     photos: list[dict],
     folder_name: str,
     credentials_file: str,
-) -> list[dict]:
+) -> tuple[list[dict], str | None]:
     """
     Upload photos to a Google Drive folder and add share URLs to each dict.
 
@@ -140,7 +140,7 @@ def upload_and_share(
         credentials_file: Path to the OAuth 2.0 client credentials JSON from Google Cloud.
 
     Returns:
-        Same list, with 'share_url' added to each dict.
+        Tuple of (photos with 'share_url' added, folder_url or None).
     """
     print(f"  Connecting to Google Drive...")
     service = _authenticate(credentials_file)
@@ -148,9 +148,10 @@ def upload_and_share(
         print("  ⚠ Skipping Google Drive upload.")
         for photo in photos:
             photo['share_url'] = None
-        return photos
+        return photos, None
 
     folder_id = _create_folder(service, folder_name)
+    folder_url = f"https://drive.google.com/drive/folders/{folder_id}"
 
     total = len(photos)
     uploaded = 0
@@ -169,4 +170,4 @@ def upload_and_share(
             photo['share_url'] = None
 
     print(f"  ✓ {uploaded}/{total} photo(s) uploaded to Drive folder '{folder_name}'")
-    return photos
+    return photos, folder_url

@@ -10,12 +10,17 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+import re
+
 import exifread
 from PIL import Image
 from PIL.ExifTags import TAGS
 
 
 SUPPORTED_EXTENSIONS = {'.jpg', '.jpeg', '.heic', '.png', '.tiff', '.tif'}
+
+# Solocator stores internal sensor data in ImageDescription — skip it
+_SOLOCATOR_PATTERN = re.compile(r'tilt_angle_deg\s*=', re.IGNORECASE)
 
 # GPSDOP threshold above which a fix is considered too poor to trust.
 # DOP 5052 ≈ 5000 m error; DOP 50 ≈ ~250–500 m. Anything above 50 gets interpolated.
@@ -94,6 +99,8 @@ def _extract_notes(tags: dict) -> Optional[str]:
             value = str(tag).strip()
             cleaned = value.replace('\x00', '').replace('ASCII', '').strip()
             if cleaned and cleaned.lower() not in ('', 'binary comment'):
+                if _SOLOCATOR_PATTERN.search(cleaned):
+                    continue  # Skip Solocator's internal sensor metadata
                 return cleaned
     return None
 

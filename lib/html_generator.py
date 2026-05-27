@@ -26,6 +26,7 @@ def build_report_meta(
     name: str | None,
     location: str | None,
     description: str | None,
+    folder_url: str | None = None,
 ) -> dict:
     """Build the report-level metadata dict."""
     # Infer date from the earliest photo timestamp
@@ -49,6 +50,7 @@ def build_report_meta(
         'photo_count': len(photos),
         'slug': slug,
         'generated_at': datetime.now().isoformat(),
+        'folder_url': folder_url,
     }
 
 
