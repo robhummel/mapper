@@ -86,9 +86,9 @@ Share links let the trail manager tap "View full image" to open the original pho
 
 ```bash
 gh api repos/robhummel/mapper/pages \
-  -X POST \
-  -f source[branch]=main \
-  -f source[path]=/output
+  --method POST \
+  --field 'source[branch]=main' \
+  --field 'source[path]=/docs'
 ```
 
 Maps publish to: `https://robhummel.github.io/mapper/REPORT-NAME.html`

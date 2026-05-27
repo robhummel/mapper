@@ -1,8 +1,8 @@
 """
 Deploy generated HTML to GitHub Pages by committing and pushing to the mapper repo.
 
-The output/ directory is committed to the main branch.
-GitHub Pages should be configured to serve from the /output folder (or repo root).
+The docs/ directory is committed to the main branch.
+GitHub Pages is configured to serve from /docs on the main branch.
 """
 
 from datetime import datetime
@@ -16,7 +16,7 @@ except ImportError:
     GIT_AVAILABLE = False
 
 REPO_ROOT = Path(__file__).parent.parent
-OUTPUT_DIR = REPO_ROOT / 'output'
+OUTPUT_DIR = REPO_ROOT / 'docs'
 GITHUB_USER = 'robhummel'
 GITHUB_REPO = 'mapper'
 PAGES_BASE_URL = f'https://{GITHUB_USER}.github.io/{GITHUB_REPO}'

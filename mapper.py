@@ -74,7 +74,7 @@ def main():
     parser.add_argument('--no-push', action='store_true',
                         help='Generate HTML without pushing to GitHub Pages')
     parser.add_argument('--output-dir', metavar='DIR', default=str(OUTPUT_DIR),
-                        help='Output directory (default: ./output)')
+                        help='Output directory (default: ./docs)')
     parser.add_argument('--open', action='store_true',
                         help='Open the generated HTML in a browser')
     args = parser.parse_args()
