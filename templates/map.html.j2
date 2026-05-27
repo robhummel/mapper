@@ -6,8 +6,7 @@
   <title>{{ report.name }}</title>
 
   <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
   <!-- Leaflet Locate Control CSS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.locatecontrol@0.79.0/dist/L.Control.Locate.min.css"/>
 
@@ -69,7 +68,8 @@
 
     /* ── Map ────────────────────────────────────────── */
     #map {
-      flex: 1;
+      flex: 1 1 0%;   /* 0% base size forces flex to compute height correctly */
+      min-height: 0;  /* prevents flex child from overflowing */
       width: 100%;
     }
 
@@ -280,9 +280,8 @@
   <button class="lb-nav" id="lb-next" onclick="lbNav(1)" aria-label="Next">›</button>
 </div>
 
-<!-- Leaflet JS -->
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV/XN/WLEo=" crossorigin=""></script>
+<!-- Leaflet JS (jsDelivr — no SRI hash to avoid silent block on mismatch) -->
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <!-- Leaflet Locate Control -->
 <script src="https://cdn.jsdelivr.net/npm/leaflet.locatecontrol@0.79.0/dist/L.Control.Locate.min.js"></script>
 
@@ -395,6 +394,9 @@ if (bounds.length > 1) {
 if (bounds.length > 0) {
   map.fitBounds(bounds, { padding: [40, 40], maxZoom: 17 });
 }
+
+// Safety net: recalculate map size after flex layout settles
+setTimeout(() => map.invalidateSize(), 100);
 
 // ── Lightbox ────────────────────────────────────────────────────────────────
 let lbIndex = 0;
