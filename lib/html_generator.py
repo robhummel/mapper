@@ -88,6 +88,8 @@ def render_map(
             'camera': p.get('camera'),
             'thumbnail_b64': p.get('thumbnail_b64'),
             'share_url': p.get('share_url'),
+            'interpolated': p.get('interpolated', False),
+            'interpolation_reason': p.get('interpolation_reason'),
         })
 
     html = template.render(
