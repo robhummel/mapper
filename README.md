@@ -44,7 +44,7 @@ python mapper.py \
 | `--name TEXT` | Report name (overrides YAML) |
 | `--location TEXT` | Location label shown in header |
 | `--description TEXT` | Description shown in header |
-| `--onedrive-path PATH` | OneDrive folder for share links (e.g. `Hikes/Trail1`) |
+| `--gdrive-folder NAME` | Upload photos to this Google Drive folder and embed share links |
 | `--no-push` | Generate HTML locally without pushing to GitHub Pages |
 | `--open` | Open the generated HTML in your browser |
 | `--output-dir DIR` | Output directory (default: `./output`) |
@@ -69,18 +69,21 @@ photos:
 Notes in the YAML **override** any notes embedded in the photo's EXIF.  
 If a photo has notes in EXIF (`UserComment` / `ImageDescription`) and no YAML override, the EXIF notes are used.
 
-## OneDrive Integration (Optional)
+## Google Drive Integration (Optional)
 
-Share links let the trail manager tap "View full image" to open the original photo on OneDrive.
+Uploads photos to Google Drive and adds a "View full image →" link in each marker popup.
 
-1. Register an app at [portal.azure.com](https://portal.azure.com) → Azure Active Directory → App registrations
-2. Add redirect URI: `https://login.microsoftonline.com/common/oauth2/nativeclient`
-3. Grant delegated permission: `Files.ReadWrite`
-4. Copy your client ID to `.env`:
+1. Go to **[console.cloud.google.com](https://console.cloud.google.com)** → Create or select a project
+2. Enable the **Google Drive API**
+3. Go to **APIs & Services → Credentials → Create Credentials → OAuth 2.0 Client ID**
+   - Application type: **Desktop app** → Create → **Download JSON**
+4. Add the path to that JSON file in `.env`:
    ```
-   ONEDRIVE_CLIENT_ID=your-client-id-here
+   GOOGLE_CREDENTIALS_FILE=/path/to/client_secret_xxxx.json
    ```
-5. Run with `--onedrive-path "Hikes/YourFolder"` — you'll be prompted to log in once; the token is cached.
+5. Run with `--gdrive-folder "CentralTrail-2026-05-26"` — your browser opens once for sign-in; token is cached at `~/.mapper-gdrive-token.json`.
+
+Photos are uploaded to a new folder in your Google Drive root (reused on re-runs). Each photo is made publicly readable via "anyone with link".
 
 ## One-Time GitHub Pages Setup
 

@@ -14,9 +14,9 @@ Options:
     --name TEXT             Report name (overrides YAML)
     --location TEXT         Location description (overrides YAML)
     --description TEXT      Report description (overrides YAML)
-    --onedrive-path PATH    OneDrive folder path for share links (optional)
+    --gdrive-folder NAME    Upload photos to this Google Drive folder and embed share links
     --no-push               Generate HTML without pushing to GitHub Pages
-    --output-dir DIR        Output directory (default: ./output)
+    --output-dir DIR        Output directory (default: ./docs)
     --open                  Open the generated HTML in a browser after generation
 """
 
@@ -69,8 +69,8 @@ def main():
                         help='Location description')
     parser.add_argument('--description', metavar='TEXT',
                         help='Report description')
-    parser.add_argument('--onedrive-path', metavar='PATH',
-                        help='OneDrive folder path for share links (e.g. "Hikes/Trail-2026")')
+    parser.add_argument('--gdrive-folder', metavar='NAME',
+                        help='Upload photos to this Google Drive folder and embed share links')
     parser.add_argument('--no-push', action='store_true',
                         help='Generate HTML without pushing to GitHub Pages')
     parser.add_argument('--output-dir', metavar='DIR', default=str(OUTPUT_DIR),
@@ -98,7 +98,7 @@ def main():
     report_name = args.name or config.get('name')
     location = args.location or config.get('location')
     description = args.description or config.get('description')
-    onedrive_path = args.onedrive_path or config.get('onedrive_path')
+    gdrive_folder = args.gdrive_folder or config.get('gdrive_folder')
 
     print(f"\n📸 Reading photos from: {photos_dir}")
     photos = read_photos_dir(photos_dir, yaml_photos)
@@ -111,19 +111,19 @@ def main():
     print(f"\n🖼  Generating thumbnails...")
     photos = add_thumbnails(photos)
 
-    # ── OneDrive share links (optional) ──────────────────────────────────────
-    if onedrive_path:
-        client_id = os.environ.get('ONEDRIVE_CLIENT_ID')
-        if not client_id:
-            print(f"\n⚠  --onedrive-path set but ONEDRIVE_CLIENT_ID not found in environment.")
-            print(f"   Copy .env.example to .env and add your Azure app client ID.")
-            print(f"   Continuing without OneDrive share links.\n")
+    # ── Google Drive upload + share links (optional) ──────────────────────────
+    if gdrive_folder:
+        credentials_file = os.environ.get('GOOGLE_CREDENTIALS_FILE')
+        if not credentials_file or not Path(credentials_file).exists():
+            print(f"\n⚠  --gdrive-folder set but GOOGLE_CREDENTIALS_FILE not found in .env.")
+            print(f"   See .env.example for setup instructions.")
+            print(f"   Continuing without Google Drive share links.\n")
             for photo in photos:
                 photo['share_url'] = None
         else:
-            print(f"\n🔗 Getting OneDrive share links from: {onedrive_path}")
-            from lib.onedrive import add_share_links
-            photos = add_share_links(photos, onedrive_path, client_id)
+            print(f"\n☁️  Uploading photos to Google Drive folder: '{gdrive_folder}'")
+            from lib.gdrive import upload_and_share
+            photos = upload_and_share(photos, gdrive_folder, credentials_file)
     else:
         for photo in photos:
             photo['share_url'] = None
